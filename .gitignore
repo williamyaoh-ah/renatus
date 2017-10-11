@@ -1,0 +1,10 @@
+# Build outputs.
+obj/
+bin/
+
+# Swap files.
+\#*\#
+*~
+
+# Go away, Visual Studio.
+.vs/
