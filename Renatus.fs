@@ -221,7 +221,7 @@ module JSON =
     /// A dummy parser which we initialize later; needed because the
     /// JSON grammar is recursive, so the parsers need to be self-referential.
     /// See: http://www.quanttec.com/fparsec/reference/primitives.html#members.createParserForwardedToRef
-    let private pvalue, private pvalueRef = createParserForwardedToRef<Value, unit>()
+    let pvalue, private pvalueRef = createParserForwardedToRef<Value, unit>()
 
     let pnull : Parser<Value> = stringReturn "null" Null
     let pbool : Parser<Value> =
