@@ -118,6 +118,16 @@ module JSONTests =
       | Some json' -> jsonCompare json json'
       | None       -> false
 
+  [<Property( MaxTest=1000 )>]
+  let ``generated JSON can always be deserialized, when concatenated together`` json =
+    let jsonStr = json |> encode |> fun s -> sprintf "%s\n%s\n%s\n" s s s
+    tryParseJSONs jsonStr |> function
+      | Some [json1; json2; json3] ->
+        jsonCompare json json1 &&
+        jsonCompare json json2 &&
+        jsonCompare json json3
+      | __                         -> false
+
   [<Properties( Arbitrary=[| typeof<ValidMap> |] )>]
   module Combining =
 
