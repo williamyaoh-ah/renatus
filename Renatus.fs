@@ -165,28 +165,33 @@ module JSON =
 
       String.collect escapeChar
 
+    // itersperse : (unit -> unit) -> ('a -> unit) -> 'a List -> unit
+    // Yes, you read the name of the function correctly.
+    let rec private itersperse f g = function
+      | [x]   -> g x
+      | x::xs -> g x; f (); itersperse f g xs
+      | __    -> ()
+
     /// Encode the JSON into a single line.
     let encode (json : Value) : string =
       let rec encode' (builder : StringBuilder) (json : Value) =
+        let add (s : string) = builder.Append(s) |> ignore
+
         match json with
-          | Null -> builder.Append("null") |> ignore
-          | Boolean b -> builder.Append(if b then "true" else "false") |> ignore
-          | Number n -> builder.Append(n.ToString()) |> ignore
-          | String s -> builder.Append(sprintf "%A" <| escape s) |> ignore
+          | Null -> add "null"
+          | Boolean b -> add <| if b then "true" else "false"
+          | Number n -> add <| n.ToString()
+          | String s -> add (sprintf "%A" <| escape s)
           | Array elements ->
-            builder.Append("[") |> ignore
-            for element in elements do
-              encode' builder element
-              builder.Append(",") |> ignore
-            builder.Append("]") |> ignore
+            add "["
+            itersperse (fun () -> (add ",")) (encode' builder) elements
+            add "]"
           | Object fields ->
-            builder.Append("{") |> ignore
-            Map.iter (fun k v ->
-                       builder.Append(sprintf "%A:" <| escape k) |> ignore
-                       encode' builder v
-                       builder.Append(",") |> ignore)
-                     fields
-            builder.Append("}") |> ignore
+            add "{"
+            itersperse (fun () -> (add ","))
+                       (fun (k, v) -> add (sprintf "%A:" <| escape k); encode' builder v)
+                       (Map.toList fields)
+            add "}"
 
       let mutable builder = StringBuilder()
       encode' builder json
@@ -245,7 +250,7 @@ module JSON =
       between quote quote (stringsSepBy normalChars escaped)
     let pstr : Parser<Value> = pstr' |>> String
     let parr : Parser<Value> =
-      between (pstring "[" >>. spaces) (pstring "]") (sepEndBy (pvalue .>> spaces) (pstring "," >>. spaces))
+      between (pstring "[" >>. spaces) (pstring "]") (sepBy (pvalue .>> spaces) (pstring "," >>. spaces))
       |>> Array
     let pobj : Parser<Value> =
       let pproperty =
@@ -257,7 +262,7 @@ module JSON =
         preturn (key, value)))
 
       between (pstring "{" >>. spaces) (pstring "}")
-              (sepEndBy (pproperty .>> spaces) (pstring "," >>. spaces))
+              (sepBy (pproperty .>> spaces) (pstring "," >>. spaces))
       |>> Map.ofList
       |>> Object
 
@@ -267,7 +272,7 @@ module JSON =
     let pjson : Parser<Value> = spaces >>. pvalue .>> spaces .>> eof
 
     /// Parser for multiple JSON documents concatenated in a string.
-    let pjsons : Parser<Value List> = sepEndBy pjson spaces
+    let pjsons : Parser<Value List> = spaces >>. sepEndBy pvalue spaces .>> eof
 
     let private fromParserResult : ('a, 'b) ParserResult -> 'a Option = function
       | Success (output, _, _) -> Some output
