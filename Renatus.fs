@@ -157,20 +157,24 @@ module JSON =
 
     open System.Text
 
-    let private escape : string -> string =
-      let escapeChar = fun c -> match c with
-        | '"' | '\\' | '/' | '\b' | '\u000C' | '\n' | '\r' | '\t' ->
-          sprintf """\%c""" c
-        | _ -> string c
-
-      String.collect escapeChar
-
     // itersperse : (unit -> unit) -> ('a -> unit) -> 'a List -> unit
     // Yes, you read the name of the function correctly.
     let rec private itersperse f g = function
       | [x]   -> g x
       | x::xs -> g x; f (); itersperse f g xs
       | __    -> ()
+
+    let jsonEscape : string -> string =
+      let escapeChar = fun c -> match c with
+        | '"' | '\\' | '/' -> sprintf @"\%c" c
+        | '\b'             -> @"\b"
+        | '\u000C'         -> @"\f"
+        | '\n'             -> @"\n"
+        | '\r'             -> @"\r"
+        | '\t'             -> @"\t"
+        | __               -> string c
+
+      String.collect escapeChar
 
     /// Encode the JSON into a single line.
     let encode (json : Value) : string =
@@ -181,7 +185,7 @@ module JSON =
           | Null -> add "null"
           | Boolean b -> add <| if b then "true" else "false"
           | Number n -> add <| n.ToString()
-          | String s -> add (sprintf "%A" <| escape s)
+          | String s -> add (sprintf "%A" <| jsonEscape s)
           | Array elements ->
             add "["
             itersperse (fun () -> (add ",")) (encode' builder) elements
@@ -189,7 +193,7 @@ module JSON =
           | Object fields ->
             add "{"
             itersperse (fun () -> (add ","))
-                       (fun (k, v) -> add (sprintf "%A:" <| escape k); encode' builder v)
+                       (fun (k, v) -> add (sprintf "%A:" <| jsonEscape k); encode' builder v)
                        (Map.toList fields)
             add "}"
 
