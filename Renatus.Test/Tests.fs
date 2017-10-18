@@ -19,10 +19,21 @@ let private unexpand (chars : char List) : string =
 let private printableASCII : Gen<char> =
   Gen.choose (0x20, 0x7f) |> Gen.map char
 
+/// Valid JSON characters which are also ASCII.
+let private jsonASCII : Gen<char> =
+  Gen.frequency
+    [ (10, printableASCII)
+    ; (1, Gen.elements ['\b'; '\u000C'; '\n'; '\r'; '\t'])
+    ]
+
 /// A string which a) contains only printable ASCII characters
 ///                b) is never null
 let asciiString : Gen<string> =
   Gen.listOf printableASCII |> Gen.map unexpand
+
+/// Valid JSON strings which are also ASCII.
+let jsonString : Gen<string> =
+  Gen.listOf jsonASCII |> Gen.map unexpand
 
 let rec isValidJSON = function
   | Null | Boolean _ | Number _ -> true
@@ -37,7 +48,7 @@ let flatGen : Gen<Value> =
     ; Arb.Default.NormalFloat()
       |> Arb.toGen
       |> Gen.map (fun (NormalFloat f) -> Number f)
-    ; asciiString |> Gen.map String
+    ; jsonString |> Gen.map String
     ]
 let rec private mapGen () : Gen<Map<string, Value>> =
      Gen.listOf (Gen.zip asciiString (validJSON ()))
@@ -75,6 +86,14 @@ type ASCIIString =
   static member ASCIIString () =
     Arb.fromGen <| asciiString
 
+type JSONString =
+  static member JSONString () =
+    Arb.fromGen <| jsonString
+
+type ControlCharacter =
+  static member ControlCharacter () =
+    Arb.fromGen <| Gen.elements ['\b'; '\u000C'; '\n'; '\r'; '\t']
+
 [<Properties( Arbitrary=[| typeof<ValidJSON> |], EndSize=20 )>]
 module JSONTests =
 
@@ -101,6 +120,21 @@ module JSONTests =
         List.map2 (fun (k1, v1) (k2, v2) -> k1 = k2 && jsonCompare v1 v2) fields1 fields2
         |> List.forall id
       | _other -> false
+
+  [<Property( MaxTest=1000, Arbitrary=[| typeof<JSONString> |] )>]
+  let ``JSON string escaping works correctly`` string =
+    String string |> encode |> tryParseJSON |> function
+      | Some (String string') -> string = string'
+      | __                    -> false
+
+  [<Property( MaxTest=1000, EndSize=100, Arbitrary=[| typeof<ControlCharacter> |])>]
+  let ``JSON string escaping works correctly with control characters embedded`` chars =
+    let str = unexpand chars
+    let json = String str
+    let jsonStr = json |> encode
+    match tryParseJSON jsonStr with
+      | Some (String str') -> jsonStr <> str && str' = str
+      | __                 -> false
 
   [<Property( MaxTest=1000 )>]
   let ``generator always generates valid JSON`` json =
