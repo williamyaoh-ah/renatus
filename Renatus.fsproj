@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <Compile Include="src/lib/Model.fs" />
+    <Compile Include="src/lib/Functional.fs" />
   </ItemGroup>
 
   <ItemGroup>
