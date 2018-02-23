@@ -7,11 +7,18 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Renatus.fs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="FParsec" Version="1.0.3" />
   </ItemGroup>
+
+  <PropertyGroup>
+    <NoWarn>NU1701</NoWarn>  <!-- NuGet target framework warning -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Generating an interface file allows us to make sure -->
+    <!-- visibilities are correct in our output. -->
+    <GenerateInterfaceFile>Renatus.fsi</GenerateInterfaceFile>
+  </PropertyGroup>
 
 </Project>
