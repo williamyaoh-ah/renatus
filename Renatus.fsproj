@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="AssemblyInfo.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Include="src/lib/Model.fs" />
     <Compile Include="src/lib/Functional.fs" />
   </ItemGroup>
